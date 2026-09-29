@@ -31,7 +31,9 @@ export const state = {
   target:'pdf', 
   csvChoice:'0', 
   last:null, 
-  busy:false
+  busy:false,
+  editorMode: 'table',
+  currentFile: null
 };
 
 export const fmtOf = id => FORMATS.find(f => f.id === id);

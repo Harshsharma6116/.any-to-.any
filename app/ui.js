@@ -12,7 +12,15 @@ export function setStatus(kind, html){
   els.status.className = 'status ' + (kind || ''); els.status.innerHTML = html; els.status.hidden = false;
 }
 export function renderFormats(){
-  els.formats.innerHTML = FORMATS.map(f =>
+  const isFull = state.editorMode === 'full';
+  const allowed = isFull ? ['docx', 'pdf', 'pptx', 'md', 'html', 'txt'] : FORMATS.map(f => f.id);
+  const visibleFormats = FORMATS.filter(f => allowed.includes(f.id));
+  
+  if (isFull && !allowed.includes(state.target)) {
+    state.target = 'docx';
+  }
+  
+  els.formats.innerHTML = visibleFormats.map(f =>
     '<button type="button" class="fmt" data-f="' + f.id + '" aria-pressed="' + (f.id === state.target) + '"><span class="ext">.' + f.ext + '</span><span class="nm">' + f.name + '</span></button>').join('');
 }
 export function renderRoute(){
@@ -22,15 +30,43 @@ export function renderRoute(){
   els.rTo.classList.toggle('empty', !state.doc);
 }
 export function renderTables(){
-  const tbs = state.doc.blocks.filter(b => b.t === 'table');
   els.tblPanel.hidden = false;
-  if(!tbs.length){
-    els.tblHint.textContent = '';
-    els.tables.innerHTML = '<p class="empty-note">No tables found in this file. Headings, paragraphs and lists will be converted as they are.</p>';
+  const isFull = state.editorMode === 'full';
+  
+  if (!isFull) {
+    const tbs = state.doc.blocks.filter(b => b.t === 'table');
+    if(!tbs.length){
+      els.tblHint.textContent = '';
+      els.tables.innerHTML = '<p class="empty-note">No tables found in this file. Headings, paragraphs and lists will be converted as they are.</p>';
+      return;
+    }
+    els.tblHint.textContent = 'Remove any column or row you do not want in the result. Removed items are hatched and can be restored.';
+    els.tables.innerHTML = renderTableBlocks(tbs, state.doc.blocks);
     return;
   }
-  els.tblHint.textContent = 'Remove any column or row you do not want in the result. Removed items are hatched and can be restored.';
-  els.tables.innerHTML = tbs.map((b, ti) => {
+
+  els.tblHint.textContent = 'Edit the text directly. Read-only images and tables are shown below.';
+  els.tables.innerHTML = state.doc.blocks.map((b, bi) => {
+    if (b.t === 'p') return '<textarea class="text-edit p-edit" data-act="edit-text" data-b="' + bi + '" rows="' + Math.min((b.text.match(/\n/g)||[]).length+2, 10) + '">' + esc(b.text) + '</textarea>';
+    if (b.t === 'h') return '<input type="text" class="text-edit h-edit h' + b.level + '" data-act="edit-text" data-b="' + bi + '" value="' + esc(b.text) + '">';
+    if (b.t === 'image') return '<img class="img-preview" src="' + b.src + '" alt="Image preview">';
+    if (b.t === 'ul' || b.t === 'ol') {
+      return '<div class="list-wrap">' + b.items.map((it, i) => 
+        '<div class="list-item-wrap"><span class="bullet">' + (b.t === 'ul' ? '&bull;' : (i+1)+'.') + '</span><input type="text" class="text-edit li-edit" data-act="edit-text" data-b="' + bi + '" data-i="' + i + '" value="' + esc(it.text) + '"></div>'
+      ).join('') + '</div>';
+    }
+    if (b.t === 'table') {
+      return renderTableBlocks([b], state.doc.blocks, true);
+    }
+    if (b.t === 'quote') return '<textarea class="text-edit p-edit" data-act="edit-text" data-b="' + bi + '" style="border-left:4px solid var(--line); padding-left:12px;">' + esc(b.text) + '</textarea>';
+    if (b.t === 'code') return '<textarea class="text-edit p-edit" data-act="edit-text" data-b="' + bi + '" style="font-family:monospace; background:var(--bg)">' + esc(b.text) + '</textarea>';
+    return '';
+  }).join('');
+}
+
+function renderTableBlocks(tbs, allBlocks, isSingle = false) {
+  return tbs.map(b => {
+    const ti = allBlocks.indexOf(b);
     const cols = b.rows[0].length, dataStart = b.header ? 1 : 0, total = b.rows.length - dataStart;
     const limit = b.showAll ? total : Math.min(total, 8);
     const label = i => b.header ? (b.rows[0][i] || 'Column ' + letters(i)) : 'Column ' + letters(i);

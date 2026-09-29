@@ -1,4 +1,4 @@
-import { PDF_WORKER } from './state.js';
+import { state, PDF_WORKER } from './state.js';
 import { clean, makeTable } from './utils.js';
 
 const BLOCK_TAGS = new Set(['p','div','section','article','header','footer','main','nav','aside','h1','h2','h3','h4','h5','h6','ul','ol','table','pre','blockquote','figure','li']);
@@ -41,6 +41,10 @@ function walk(node, out){
     else if(tag === 'table'){ const tb = tableFromEl(n); if(tb) out.push(tb); }
     else if(tag === 'pre'){ const t = n.textContent.replace(/\s+$/,''); if(t.trim()) out.push({t:'code', text:t}); }
     else if(tag === 'blockquote'){ const t = clean(n.textContent); if(t) out.push({t:'quote', text:t}); }
+    else if(tag === 'img' && state.editorMode === 'full'){
+      const src = n.getAttribute('src');
+      if (src && src.startsWith('data:image/')) out.push({t:'image', src});
+    }
     else if(['script','style','head','img','svg','hr','br','noscript'].includes(tag)){}
     else if(!hasBlock(n)){ const t = clean(n.textContent); if(t) out.push({t:'p', text:t}); }
     else walk(n, out);
@@ -178,9 +182,37 @@ async function pptxToBlocks(buf){
         }
       }
     };
+    
+    // Process shapes
     const tree = xml.getElementsByTagName('p:spTree')[0];
     if(tree) shapes(tree);
     flush();
+    
+    // Process images if in full mode
+    if(state.editorMode === 'full') {
+      const relsFile = f.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
+      if(zip.files[relsFile]) {
+        const rXml = new DOMParser().parseFromString(await zip.files[relsFile].async('string'), 'application/xml');
+        const rels = {};
+        Array.from(rXml.getElementsByTagName('Relationship')).forEach(r => rels[r.getAttribute('Id')] = r.getAttribute('Target'));
+        
+        const pics = Array.from(xml.getElementsByTagName('p:pic'));
+        for(const pic of pics) {
+          const blip = pic.getElementsByTagName('a:blip')[0];
+          if(!blip) continue;
+          const rId = blip.getAttribute('r:embed');
+          const target = rels[rId];
+          if(!target) continue;
+          const targetName = 'ppt/media/' + target.split('/').pop();
+          if(zip.files[targetName]) {
+            const ext = targetName.split('.').pop().toLowerCase();
+            const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+            const base64 = await zip.files[targetName].async('base64');
+            slide.push({t:'image', src: 'data:' + mime + ';base64,' + base64});
+          }
+        }
+      }
+    }
     blocks.push(title || {t:'h', level:2, text:'Slide ' + n});
     blocks.push(...slide);
   }
@@ -200,8 +232,39 @@ async function pdfToBlocks(buf){
     for(let p = 1; p <= pdf.numPages; p++){
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent({disableCombineTextItems:true});
-      pages.push({h:page.view[3], items:tc.items.filter(i => i.str !== undefined && i.str !== '').map(i => ({
-        s:i.str, x:i.transform[4], y:i.transform[5], w:i.width, h:Math.abs(i.transform[3]) || i.height || 10}))});
+      const items = tc.items.filter(i => i.str !== undefined && i.str !== '').map(i => ({
+        s:i.str, x:i.transform[4], y:i.transform[5], w:i.width, h:Math.abs(i.transform[3]) || i.height || 10}));
+        
+      if(state.editorMode === 'full') {
+        const ops = await page.getOperatorList();
+        for(let i = 0; i < ops.fnArray.length; i++) {
+          const fn = ops.fnArray[i];
+          if(fn === pdfjsLib.OPS.paintImageXObject || fn === pdfjsLib.OPS.paintJpegXObject) {
+            try {
+               const imgId = ops.argsArray[i][0];
+               const img = await page.objs.get(imgId);
+               let src = null;
+               if (img && img.src) src = img.src;
+               else if (img && img.data && img.width && img.height) {
+                 const canvas = document.createElement('canvas');
+                 canvas.width = img.width; canvas.height = img.height;
+                 const ctx = canvas.getContext('2d');
+                 const imgData = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height);
+                 ctx.putImageData(imgData, 0, 0);
+                 src = canvas.toDataURL('image/png');
+               }
+               if(src) {
+                 let y = page.view[3] / 2;
+                 for(let j = i - 1; j >= 0; j--) {
+                   if (ops.fnArray[j] === pdfjsLib.OPS.transform) { y = ops.argsArray[j][5]; break; }
+                 }
+                 items.push({ isImage: true, src, x: 0, y: y, h: img.height || 100, s: '' });
+               }
+            } catch(e) { console.warn('PDF image extract fail', e); }
+          }
+        }
+      }
+      pages.push({h:page.view[3], items});
     }
   } finally { window.Worker = RealWorker; }
   return pdfPagesToBlocks(pages);
@@ -209,8 +272,8 @@ async function pdfToBlocks(buf){
 function pdfPagesToBlocks(pages){
   // body font size = weighted median
   const sizes = [];
-  pages.forEach(pg => pg.items.forEach(i => { for(let k = 0; k < Math.min(i.s.length, 30); k++) sizes.push(Math.round(i.h * 2) / 2); }));
-  if(!sizes.length) return [];
+  pages.forEach(pg => pg.items.forEach(i => { if(!i.isImage) { for(let k = 0; k < Math.min(i.s.length, 30); k++) sizes.push(Math.round(i.h * 2) / 2); } }));
+  if(!sizes.length && state.editorMode === 'table') return [];
   sizes.sort((a,b) => a - b);
   const body = sizes[Math.floor(sizes.length / 2)] || 10;
   const blocks = [];
@@ -219,12 +282,14 @@ function pdfPagesToBlocks(pages){
     const items = pg.items.slice().sort((a,b) => b.y - a.y || a.x - b.x);
     const lines = [];
     for(const it of items){
+      if(it.isImage) { lines.push(it); continue; }
       if(!it.s.trim()) continue;   // pdf.js reports wide gaps as whitespace items; measure real distances instead
-      const ln = lines.find(l => Math.abs(l.y - it.y) < Math.max(2, it.h * 0.45));
+      const ln = lines.find(l => !l.isImage && Math.abs(l.y - it.y) < Math.max(2, it.h * 0.45));
       if(ln) ln.items.push(it); else lines.push({y:it.y, h:it.h, items:[it]});
     }
     lines.sort((a,b) => b.y - a.y);
     for(const ln of lines){
+      if(ln.isImage) { ln.text = ''; ln.cells = []; continue; }
       ln.items.sort((a,b) => a.x - b.x);
       const cells = []; let prev = null;
       for(const it of ln.items){
@@ -240,14 +305,19 @@ function pdfPagesToBlocks(pages){
       ln.text = ln.cells.map(c => c.text).join(' ');
       ln.h = Math.max(...ln.items.map(i => i.h));
     }
-    const kept = lines.filter(l => l.text && !(/^(page\s*)?\d{1,4}(\s*(\/|of)\s*\d{1,4})?$/i.test(l.text) && (l.y < pg.h * 0.07 || l.y > pg.h * 0.93)));
+    const kept = lines.filter(l => l.isImage || (l.text && !(/^(page\s*)?\d{1,4}(\s*(\/|of)\s*\d{1,4})?$/i.test(l.text) && (l.y < pg.h * 0.07 || l.y > pg.h * 0.93))));
     let i = 0, para = null, prevLine = null;
     const endPara = () => { if(para){ blocks.push({t:'p', text:clean(para)}); para = null; } };
     while(i < kept.length){
       const ln = kept[i];
+      if (ln.isImage) {
+        endPara();
+        blocks.push({t: 'image', src: ln.src});
+        i++; continue;
+      }
       // table run
       if(ln.cells.length >= 2){
-        let j = i; while(j < kept.length && kept[j].cells.length >= 2) j++;
+        let j = i; while(j < kept.length && !kept[j].isImage && kept[j].cells.length >= 2) j++;
         if(j - i >= 2){
           endPara();
           const group = kept.slice(i, j);

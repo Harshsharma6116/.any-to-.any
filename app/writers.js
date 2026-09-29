@@ -8,6 +8,7 @@ function toMD(doc){
   for(const b of doc.blocks){
     if(b.t === 'h') out.push('#'.repeat(Math.min(6,b.level)) + ' ' + b.text);
     else if(b.t === 'p') out.push(b.text);
+    else if(b.t === 'image') out.push('![image](' + b.src + ')');
     else if(b.t === 'ul' || b.t === 'ol'){
       const labels = numberItems(b);
       out.push(b.items.map((it,i) => '  '.repeat(it.level || 0) + (b.t === 'ul' ? '- ' : labels[i] + ' ') + it.text).join('\n'));
@@ -39,6 +40,7 @@ function bodyHTML(doc){
   for(const b of doc.blocks){
     if(b.t === 'h') h += '<h' + Math.min(6,b.level) + '>' + esc(b.text) + '</h' + Math.min(6,b.level) + '>\n';
     else if(b.t === 'p') h += '<p>' + esc(b.text) + '</p>\n';
+    else if(b.t === 'image') h += '<img src="' + b.src + '" style="max-width:100%; height:auto;" alt="Extracted Image">\n';
     else if(b.t === 'ul' || b.t === 'ol') h += listHTML(b) + '\n';
     else if(b.t === 'code') h += '<pre>' + esc(b.text) + '</pre>\n';
     else if(b.t === 'quote') h += '<blockquote>' + esc(b.text) + '</blockquote>\n';
@@ -63,6 +65,7 @@ function toTXT(doc){
   for(const b of doc.blocks){
     if(b.t === 'h'){ out.push(b.text + (b.level <= 2 ? '\n' + (b.level === 1 ? '=' : '-').repeat(Math.min(b.text.length, 80)) : '')); }
     else if(b.t === 'p') out.push(b.text);
+    else if(b.t === 'image') out.push('[Image]');
     else if(b.t === 'ul' || b.t === 'ol'){ const l = numberItems(b); out.push(b.items.map((it,i) => '   '.repeat(it.level || 0) + (b.t === 'ul' ? '- ' : l[i] + ' ') + it.text).join('\n')); }
     else if(b.t === 'code') out.push(b.text);
     else if(b.t === 'quote') out.push('> ' + b.text);
@@ -146,6 +149,20 @@ function toXLSX(doc){
   if(text.length) addSheet(text, 'Text');
   return XLSX.write(wb, {type:'array', bookType:'xlsx'});
 }
+function base64ToBuffer(b64) {
+  const str = window.atob(b64.split(',')[1]);
+  const buf = new Uint8Array(str.length);
+  for(let i=0; i<str.length; i++) buf[i] = str.charCodeAt(i);
+  return buf.buffer;
+}
+async function getImageDims(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve({w: img.naturalWidth, h: img.naturalHeight});
+    img.onerror = () => resolve({w: 500, h: 300});
+    img.src = src;
+  });
+}
 async function toDOCX(doc){
   const D = window.docx;
   if(!D) throw new Error('The Word writer did not load. Reload the page and try again.');
@@ -155,6 +172,15 @@ async function toDOCX(doc){
   for(const b of doc.blocks){
     if(b.t === 'h') kids.push(new D.Paragraph({heading:H[Math.min(6,b.level)], children:[run(b.text)]}));
     else if(b.t === 'p') kids.push(new D.Paragraph({spacing:{after:140}, children:[run(b.text)]}));
+    else if(b.t === 'image') {
+      const dims = await getImageDims(b.src);
+      const w = Math.min(600, dims.w);
+      const h = Math.round(w * (dims.h / dims.w));
+      kids.push(new D.Paragraph({
+        spacing: { after: 200 },
+        children: [new D.ImageRun({ data: base64ToBuffer(b.src), transformation: { width: w, height: h } })]
+      }));
+    }
     else if(b.t === 'ul' || b.t === 'ol'){
       inst++;
       b.items.forEach(it => {
@@ -260,7 +286,7 @@ function needsUnicode(doc){
     return re.test(b.text || '');
   });
 }
-function toPDFText(doc){
+async function toPDFText(doc){
   if(!window.jspdf) throw new Error('The PDF writer did not load. Reload the page and try again.');
   const {jsPDF} = window.jspdf;
   const safe = s => String(s).replace(/[\u2019\u2018\u201C\u201D\u2013\u2014\u2026\u2022\u00A0\u2192\u20AC]/g, ch => PDF_MAP[ch]);
@@ -287,6 +313,14 @@ function toPDFText(doc){
     else if(b.t === 'p') write(b.text);
     else if(b.t === 'quote') write(b.text, {indent:18});
     else if(b.t === 'code') write(b.text, {font:'courier', size:9});
+    else if(b.t === 'image'){
+      const dims = await getImageDims(b.src);
+      const w = Math.min(pw - 2*M, dims.w * 0.75);
+      const h = w * (dims.h / dims.w);
+      if(y + h > ph - M) { pdf.addPage(); y = M; }
+      pdf.addImage(b.src, b.src.includes('image/png') ? 'PNG' : 'JPEG', M, y, w, h);
+      y += h + 16;
+    }
     else if(b.t === 'ul' || b.t === 'ol'){
       const l = numberItems(b);
       b.items.forEach((it,i) => write(it.text, {indent:8 + (it.level || 0) * 16, hang:16, gap:3, label: b.t === 'ul' ? '-' : l[i]}));
@@ -344,7 +378,7 @@ async function toPDFImage(doc){
 }
 async function toPDF(doc){
   if(needsUnicode(doc)) return {data: await toPDFImage(doc), notice:'This file contains characters the standard PDF fonts cannot draw, so the PDF was built from page images. Its text cannot be selected or searched.'};
-  return {data: toPDFText(doc)};
+  return {data: await toPDFText(doc)};
 }
 
 export const WRITERS = {
