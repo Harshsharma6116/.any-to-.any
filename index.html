@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Any-to-any file converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="/" aria-label="Home">
+      <svg class="brand-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+      <span class="brand-name">AnyConvert</span>
+    </a>
+    <nav class="header-nav">
+      <span class="tagline">Browser-only file converter</span>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark / light theme" title="Toggle theme">
+        <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero" aria-labelledby="ttl">
+    <h1 class="route" id="ttl"><span class="from empty" id="rFrom">.any</span><span class="arrow" aria-hidden="true">to</span><span class="to empty" id="rTo">.any</span></h1>
+    <p class="lede">Convert documents, spreadsheets, slides and text between formats. When a file has tables, you can remove columns or rows before you convert. Files stay in your browser.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-file">
+    <h2 id="h-file">1. Add a file</h2>
+    <p class="hint">Word, PDF, Excel, PowerPoint, CSV, Markdown, HTML, JSON or text.</p>
+    <div class="drop" id="drop">
+      <div class="what" id="dropWhat"><strong>Drop a file here</strong><span>or pick one from your device</span></div>
+      <div class="actions">
+        <button class="btn primary" id="pick" type="button">Choose file</button>
+        <button class="linkbtn" id="sample" type="button">Try a sample table</button>
+      </div>
+      <input type="file" id="file" hidden accept=".docx,.pdf,.xlsx,.xls,.xlsm,.ods,.csv,.tsv,.md,.markdown,.txt,.html,.htm,.pptx,.json,text/*">
+    </div>
+    <p class="supported">Reads .docx .pdf .xlsx .xls .ods .pptx .csv .tsv .md .html .json .txt. Older .doc and .ppt files need to be re-saved as .docx or .pptx first.</p>
+  </section>
+
+  <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+  <section class="panel" id="fmtPanel" aria-labelledby="h-fmt" hidden>
+    <h2 id="h-fmt">2. Choose the new format</h2>
+    <p class="hint">Pick what you want to end up with.</p>
+    <div class="formats" id="formats" role="group" aria-label="Output format"></div>
+    <div class="csvpick" id="csvPick" hidden>
+      <label for="csvSel">CSV can hold one table. Export:</label>
+      <select id="csvSel"></select>
+    </div>
+  </section>
+
+  <section class="panel" id="tblPanel" aria-labelledby="h-tbl" hidden>
+    <h2 id="h-tbl">3. Tables</h2>
+    <p class="hint" id="tblHint"></p>
+    <div id="tables"></div>
+  </section>
+
+  <div class="bar" id="bar" hidden>
+    <div class="sum" id="sum"></div>
+    <button class="btn primary" id="go" type="button">Convert</button>
+  </div>
+  <p class="foot">Text, headings, lists and tables carry over. Images, fonts and page layout do not.</p>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+
+    <div class="footer-cols">
+      <div class="footer-col">
+        <div class="footer-brand">
+          <svg class="brand-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          <strong>AnyConvert</strong>
+        </div>
+        <p class="footer-desc">A free, open-source file converter that runs entirely in your browser. No installs, no sign-ups, no file size limits.</p>
+        <ul class="footer-features">
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            100% client-side processing
+          </li>
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Edit tables before converting
+          </li>
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Works offline after first load
+          </li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3 class="footer-heading">How it works</h3>
+        <ol class="footer-steps">
+          <li><span class="step-num">1</span> Drop or pick any supported file</li>
+          <li><span class="step-num">2</span> Choose your target format</li>
+          <li><span class="step-num">3</span> Optionally edit tables</li>
+          <li><span class="step-num">4</span> Click Convert — instant download</li>
+        </ol>
+      </div>
+
+      <div class="footer-col">
+        <h3 class="footer-heading">Supported formats</h3>
+        <div class="footer-fmt-grid">
+          <span class="ftag"><span class="ftag-ext">.docx</span>Word</span>
+          <span class="ftag"><span class="ftag-ext">.pdf</span>PDF</span>
+          <span class="ftag"><span class="ftag-ext">.xlsx</span>Excel</span>
+          <span class="ftag"><span class="ftag-ext">.pptx</span>PowerPoint</span>
+          <span class="ftag"><span class="ftag-ext">.csv</span>CSV</span>
+          <span class="ftag"><span class="ftag-ext">.md</span>Markdown</span>
+          <span class="ftag"><span class="ftag-ext">.html</span>HTML</span>
+          <span class="ftag"><span class="ftag-ext">.json</span>JSON</span>
+          <span class="ftag"><span class="ftag-ext">.txt</span>Text</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-privacy-banner">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <p>Your files <strong>never leave your browser</strong>. Everything is processed locally on your device — no uploads, no servers, no tracking. Your data stays yours.</p>
+    </div>
+
+    <div class="footer-bottom">
+      <small>&copy; 2025 AnyConvert &mdash; Free &amp; open-source browser tool. Built with ❤️ for hassle-free conversions.</small>
+    </div>
+
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
