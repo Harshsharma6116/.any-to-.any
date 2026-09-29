@@ -214,3 +214,16 @@ renderFormats(); renderRoute();
     localStorage.setItem('theme', next);
   });
 })();
+
+/* ---------- settings modal ---------- */
+const modal = document.getElementById('settingsModal');
+const apiKeyInput = document.getElementById('apiKey');
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+  modal.showModal();
+});
+document.getElementById('closeSettings').addEventListener('click', () => modal.close());
+document.getElementById('saveSettings').addEventListener('click', () => {
+  localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+  modal.close();
+});

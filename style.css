@@ -218,3 +218,10 @@ select:hover{border-color:var(--primary)}
 .foot{color:var(--muted);font-size:.86rem;padding:10px 0 24px}
 @media (max-width:520px){.wrap{padding:18px 14px 0}.bar{margin:0 -14px;padding-left:14px;padding-right:14px}.panel{padding:16px}.header-inner{padding:10px 14px}.footer-inner{padding:22px 14px 18px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* modal */
+.modal { border: none; border-radius: 12px; padding: 24px; background: var(--surface); color: var(--ink); max-width: 400px; width: 90%; }
+.modal::backdrop { background: rgba(0, 0, 0, 0.5); }
+.modal h2 { margin: 0 0 8px; font: 600 1.25rem var(--display); }
+.modal .hint { margin: 0 0 16px; color: var(--muted); font-size: 0.9rem; }
+.modal .field { display: flex; flex-direction: column; gap: 4px; }
+.modal input[type="password"] { padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font-family: monospace; width: 100%; box-sizing: border-box; }

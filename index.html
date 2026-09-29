@@ -48,9 +48,9 @@
         <button class="linkbtn" id="sample" type="button">Try a sample table</button>
         <button class="linkbtn" id="sampleDoc" type="button">Try a sample document</button>
       </div>
-      <input type="file" id="file" hidden accept=".docx,.pdf,.xlsx,.xls,.xlsm,.ods,.csv,.tsv,.md,.markdown,.txt,.html,.htm,.pptx,.json,text/*">
+      <input type="file" id="file" hidden accept=".docx,.pdf,.xlsx,.xls,.xlsm,.ods,.csv,.tsv,.md,.markdown,.txt,.html,.htm,.pptx,.json,.jpg,.jpeg,.png,image/jpeg,image/png,text/*">
     </div>
-    <p class="supported">Reads .docx .pdf .xlsx .xls .ods .pptx .csv .tsv .md .html .json .txt. Older .doc and .ppt files need to be re-saved as .docx or .pptx first.</p>
+    <p class="supported">Reads .docx .pdf .xlsx .xls .ods .pptx .csv .tsv .md .html .json .txt .jpg .png. Older .doc and .ppt files need to be re-saved as .docx or .pptx first.</p>
   </section>
 
   <div id="status" class="status" role="status" aria-live="polite" hidden></div>
@@ -138,9 +138,28 @@
     <div class="footer-bottom">
       <small>&copy; 2025 AnyConvert &mdash; Free &amp; open-source browser tool. Built with ❤️ for hassle-free conversions.</small>
     </div>
+    
+    <div class="settings-wrap">
+      <button class="linkbtn" id="settingsBtn" type="button">⚙️ Settings</button>
+    </div>
 
   </div>
 </footer>
+
+<dialog id="settingsModal" class="modal">
+  <form method="dialog">
+    <h2>Settings</h2>
+    <p class="hint">Enter a free Google Gemini API key to enable Image-to-Table conversion.</p>
+    <div class="field">
+      <label for="apiKey">Gemini API Key</label>
+      <input type="password" id="apiKey" placeholder="AIzaSy...">
+    </div>
+    <div class="actions" style="margin-top: 16px; display: flex; gap: 8px;">
+      <button type="button" class="btn primary" id="saveSettings">Save</button>
+      <button type="button" class="btn" id="closeSettings">Cancel</button>
+    </div>
+  </form>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>

@@ -384,6 +384,45 @@ export async function parseFile(file){
   else if(ext === 'pdf') blocks = await pdfToBlocks(await file.arrayBuffer());
   else if(['xlsx','xls','xlsm','ods'].includes(ext)) blocks = xlsxToBlocks(await file.arrayBuffer());
   else if(ext === 'pptx') blocks = await pptxToBlocks(await file.arrayBuffer());
+  else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (!apiKey) throw new Error('To convert images to tables, please click the ⚙️ Settings button at the bottom and enter a free Google Gemini API key.');
+    
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+
+    const body = {
+      contents: [{
+        parts: [
+          { text: "Extract the data from this image into a single CSV table. Do not include any markdown formatting, headers, or explanations. Just return the raw CSV." },
+          { inlineData: { mimeType: file.type || 'image/jpeg', data: base64 } }
+        ]
+      }]
+    };
+
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      let msg = 'API Error';
+      try { const err = await res.json(); msg = err.error.message; } catch(e){}
+      throw new Error('Gemini API Error: ' + msg);
+    }
+
+    const data = await res.json();
+    let csv = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    csv = csv.replace(/```csv/gi, '').replace(/```/g, '').trim();
+    if (!csv) throw new Error('No table data was found in the image.');
+
+    const t = makeTable(parseDelimited(csv, sniffDelim(csv)), file.name.replace(/\.[^.]+$/,''));
+    blocks = t ? [t] : [];
+  }
   else if(ext === 'csv' || ext === 'tsv'){
     const text = (await file.text()).replace(/^\uFEFF/,'');
     const t = makeTable(parseDelimited(text, ext === 'tsv' ? '\t' : sniffDelim(text)), file.name.replace(/\.[^.]+$/,''));
