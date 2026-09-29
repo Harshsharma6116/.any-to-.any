@@ -23,38 +23,35 @@ Block types: `h` (heading), `p` (paragraph), `ul`/`ol` (list),
 
 ## File map
 
-| File | Owns |
+| File/Folder | Owns |
 |---|---|
 | `index.html` | Page structure, CDN script/link tags, file input & drop zone, conversion UI |
 | `style.css` | All styling (light and dark themes, responsive layout) |
-| `app.js` | All logic: readers (`parseFile`), block model, table editor, writers (`WRITERS`), UI wiring, events |
+| `app.js` | Main entry point. Imports modules, binds UI events |
+| `app/` | ES Modules directory (`state.js`, `utils.js`, `readers.js`, `editor.js`, `writers.js`, `ui.js`) |
 | `file-converter.html` | Self-contained single-file version (HTML + CSS + JS inlined) |
 | `README.md` | Human-facing docs: stack, install/run, architecture |
 
-There is no CSS-in-JS, no inline `<style>` blocks in `index.html`, and no
-separate JS modules — keep it that way. One file per concern, as above.
+There is no CSS-in-JS, no inline `<style>` blocks in `index.html`, and no npm bundler. We use native browser ES modules (`<script type="module">`).
 
-## `app.js` architecture — the sections you need to know
+## `app/` architecture — the sections you need to know
 
-The file follows this top-to-bottom structure:
+The logic is split into the following native ES modules:
 
-| Lines (approx) | Section | What it does |
-|---|---|---|
-| 1–27 | Constants | `FORMATS`, `MIME` map, global `state` |
-| 28–50 | Small helpers | `$()` selector, `esc()`, `clean()`, `normRows()`, `makeTable()` |
-| 52–350 | **Readers** | HTML→blocks, delimited text (CSV/TSV), plain text, JSON, Excel (SheetJS), PowerPoint (JSZip), PDF (pdf.js) |
-| 352–382 | `parseFile()` | Main entry: picks the right reader by extension |
-| 384–416 | Table editor | `effectiveBlocks()` — applies hidden-row/column edits |
-| 418–775 | **Writers** | `WRITERS` object — one key per output format (docx, pdf, xlsx, pptx, csv, md, html, txt, json) |
-| 776–784 | Saving | `saveBlob()` — triggers the browser download |
-| 785–914 | UI rendering | `renderPreview()`, `renderTableEditor()`, format buttons, CSV dialog |
-| 915–962 | Events | Drop zone, file input, format buttons, convert button, initialization |
+| Module | What it does |
+|---|---|
+| `state.js` | Constants (`FORMATS`, `MIME`), and the global `state` object |
+| `utils.js` | DOM selector (`$`), text escaping (`esc`), array cleaners (`normRows`) |
+| `readers.js` | `parseFile()` — HTML→blocks, delimited text, plain text, JSON, Excel, PowerPoint, PDF |
+| `editor.js` | Table editor logic (`effectiveDoc` — applies hidden-row/column edits) |
+| `writers.js` | `WRITERS` object — outputs docx, pdf, xlsx, pptx, csv, md, html, txt, json |
+| `ui.js` | UI rendering (`renderPreview()`, `renderTables()`, format buttons, CSV dialog) |
 
 ### How to add a new format
 
-1. **Reader**: Add a case in `parseFile()` (line ~353) that returns `{blocks, ext}`.
-2. **Writer**: Add a key in the `WRITERS` object (line ~764) that takes the blocks array and returns `{blob, ext}`.
-3. **Format entry**: Add to the `FORMATS` array (line ~10) and `MIME` map (line ~21).
+1. **Reader**: Add a case in `app/readers.js` (`parseFile()`) that returns `{blocks, ext}`.
+2. **Writer**: Add a key in the `WRITERS` object in `app/writers.js` that takes the blocks array and returns `{blob, ext}`.
+3. **Format entry**: Add to the `FORMATS` array and `MIME` map in `app/state.js`.
 
 Copy an existing reader/writer of similar complexity as your starting template.
 
