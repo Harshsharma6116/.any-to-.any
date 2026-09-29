@@ -111,7 +111,7 @@ els.formats.addEventListener('click', e => {
 els.csvSel.addEventListener('change', () => { state.csvChoice = els.csvSel.value; });
 els.tables.addEventListener('click', e => {
   const btn = e.target.closest('button[data-act]'); if(!btn) return;
-  const art = btn.closest('.tbl'), b = state.doc.blocks.filter(x => x.t === 'table')[+art.dataset.t], i = +btn.dataset.i;
+  const art = btn.closest('.tbl'), b = state.doc.blocks[+art.dataset.t], i = +btn.dataset.i;
   const act = btn.dataset.act;
   if(act === 'col') b.hiddenCols.has(i) ? b.hiddenCols.delete(i) : b.hiddenCols.add(i);
   else if(act === 'row') b.hiddenRows.has(i) ? b.hiddenRows.delete(i) : b.hiddenRows.add(i);
@@ -123,7 +123,7 @@ els.tables.addEventListener('click', e => {
 });
 els.tables.addEventListener('change', e => {
   const inp = e.target.closest('input[data-act]'); if(!inp) return;
-  const art = inp.closest('.tbl'), b = state.doc.blocks.filter(x => x.t === 'table')[+art.dataset.t];
+  const art = inp.closest('.tbl'), b = state.doc.blocks[+art.dataset.t];
   if(inp.dataset.act === 'include') b.include = inp.checked;
   if(inp.dataset.act === 'header'){ b.header = inp.checked; b.hiddenRows.delete(0); b.hiddenCols.clear(); }
   renderTables(); refresh();
@@ -131,7 +131,7 @@ els.tables.addEventListener('change', e => {
 els.tables.addEventListener('input', e => {
   if(!e.target.dataset.act || !e.target.dataset.act.startsWith('rename')) return;
   const art = e.target.closest('.tbl');
-  const b = state.doc.blocks.filter(x => x.t === 'table')[+art.dataset.t];
+  const b = state.doc.blocks[+art.dataset.t];
   
   if(e.target.dataset.act === 'rename-tbl'){
     b.name = e.target.value;
