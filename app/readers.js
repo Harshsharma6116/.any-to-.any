@@ -229,19 +229,6 @@ async function pdfToBlocks(buf){
   const pages = [];
   try{
     const pdf = await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
-    if (state.editorMode === 'snapshot') {
-      const blocks = [];
-      for(let p = 1; p <= pdf.numPages; p++){
-        const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 2 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        blocks.push({ t: 'snapshot', src: canvas.toDataURL('image/jpeg', 0.85), w: viewport.width, h: viewport.height });
-      }
-      return blocks;
-    }
 
     for(let p = 1; p <= pdf.numPages; p++){
       const page = await pdf.getPage(p);
@@ -389,7 +376,6 @@ export async function parseFile(file){
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   let blocks;
   if(ext === 'doc' || ext === 'ppt') throw new Error('Older .' + ext + ' files are not supported. Open it and save it as .' + ext + 'x, then add it again.');
-  if (state.editorMode === 'snapshot' && ext !== 'pdf') throw new Error('Snapshot mode currently only supports PDF files. Switch to Full Document or Table mode to read this file.');
   if(ext === 'docx'){
     if(!window.mammoth) throw new Error('The Word reader did not load. Reload the page and try again.');
     const r = await mammoth.convertToHtml({arrayBuffer: await file.arrayBuffer()});

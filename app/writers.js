@@ -170,12 +170,7 @@ async function toDOCX(doc){
   const kids = []; let inst = 0;
   const run = (t, o) => new D.TextRun(Object.assign({text:String(t)}, o || {}));
   for(const b of doc.blocks){
-    if(b.t === 'snapshot') {
-      kids.push(new D.Paragraph({
-        children: [new D.ImageRun({ data: base64ToBuffer(b.src), transformation: { width: 600, height: Math.round(600 * (b.h / b.w)) } })]
-      }));
-    }
-    else if(b.t === 'h') kids.push(new D.Paragraph({heading:H[Math.min(6,b.level)], children:[run(b.text)]}));
+    if(b.t === 'h') kids.push(new D.Paragraph({heading:H[Math.min(6,b.level)], children:[run(b.text)]}));
     else if(b.t === 'p') kids.push(new D.Paragraph({spacing:{after:140}, children:[run(b.text)]}));
     else if(b.t === 'image') {
       const dims = await getImageDims(b.src);
@@ -243,7 +238,6 @@ async function toPPTX(doc){
     cur.items.push(item); cur.chars += len;
   };
   for(const b of doc.blocks){
-    if(b.t === 'snapshot') { slides.push({ isSnapshot: true, src: b.src }); continue; }
     if(b.t === 'h' && b.level <= 2){ start(b.text); continue; }
     if(b.t === 'h') add({k:'sub', text:b.text}, b.text.length + 40);
     else if(b.t === 'p') add({k:'p', text:b.text}, b.text.length + 40);
@@ -260,11 +254,6 @@ async function toPPTX(doc){
     }
   }
   for(const s of slides){
-    if (s.isSnapshot) {
-      const sl = P.addSlide();
-      sl.addImage({ data: s.src, x:0, y:0, w:'100%', h:'100%' });
-      continue;
-    }
     const sl = P.addSlide({masterName: s.items.length ? 'CONTENT' : 'OPENER'});
     sl.addText(s.title + (s.cont ? ' (cont.)' : ''), {placeholder:'title'});
     if(!s.items.length) continue;
@@ -324,15 +313,6 @@ async function toPDFText(doc){
     else if(b.t === 'p') write(b.text);
     else if(b.t === 'quote') write(b.text, {indent:18});
     else if(b.t === 'code') write(b.text, {font:'courier', size:9});
-    else if(b.t === 'snapshot'){
-      if(b !== doc.blocks[0] || y > M) pdf.addPage();
-      const dims = await getImageDims(b.src);
-      const sScale = Math.min(pw / dims.w, ph / dims.h);
-      const sw = dims.w * sScale;
-      const sh = dims.h * sScale;
-      pdf.addImage(b.src, 'JPEG', (pw - sw) / 2, (ph - sh) / 2, sw, sh);
-      y = ph;
-    }
     else if(b.t === 'image'){
       const dims = await getImageDims(b.src);
       const w = Math.min(pw - 2*M, dims.w * 0.75);

@@ -13,11 +13,10 @@ export function setStatus(kind, html){
 }
 export function renderFormats(){
   const isFull = state.editorMode === 'full';
-  const isSnapshot = state.editorMode === 'snapshot';
-  const allowed = isSnapshot ? ['pptx', 'docx', 'pdf'] : isFull ? ['docx', 'pdf', 'pptx', 'md', 'html', 'txt'] : FORMATS.map(f => f.id);
+  const allowed = isFull ? ['docx', 'pdf', 'pptx', 'md', 'html', 'txt'] : FORMATS.map(f => f.id);
   const visibleFormats = FORMATS.filter(f => allowed.includes(f.id));
   
-  if ((isFull || isSnapshot) && !allowed.includes(state.target)) {
+  if (isFull && !allowed.includes(state.target)) {
     state.target = 'docx';
   }
   
@@ -33,16 +32,6 @@ export function renderRoute(){
 export function renderTables(){
   els.tblPanel.hidden = false;
   const isFull = state.editorMode === 'full';
-  const isSnapshot = state.editorMode === 'snapshot';
-  
-  if (isSnapshot) {
-    els.tblHint.textContent = 'Each page of the PDF has been perfectly captured as an image. Text editing is disabled in this mode.';
-    els.tables.innerHTML = state.doc.blocks.map(b => {
-      if (b.t === 'snapshot') return '<img class="img-preview" src="' + b.src + '" alt="Snapshot preview" style="width:100%; max-width:800px; border:1px solid var(--line); margin-bottom:16px;">';
-      return '';
-    }).join('');
-    return;
-  }
   
   if (!isFull) {
     const tbs = state.doc.blocks.filter(b => b.t === 'table');
