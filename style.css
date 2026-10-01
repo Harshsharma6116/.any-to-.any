@@ -225,3 +225,4 @@ select:hover{border-color:var(--primary)}
 .modal .hint { margin: 0 0 16px; color: var(--muted); font-size: 0.9rem; }
 .modal .field { display: flex; flex-direction: column; gap: 4px; }
 .modal input[type="password"] { padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font-family: monospace; width: 100%; box-sizing: border-box; }
+.trust-banner { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); } .trust-item { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-muted); } .trust-item svg { color: var(--brand); flex-shrink: 0; } .trust-item strong { color: var(--text); }
