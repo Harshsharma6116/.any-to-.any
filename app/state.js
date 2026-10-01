@@ -10,6 +10,8 @@ export const FORMATS = [
   {id:'html', ext:'html', name:'HTML'},
   {id:'txt',  ext:'txt',  name:'Plain text'},
   {id:'json', ext:'json', name:'JSON'},
+  {id:'jpg',  ext:'jpg',  name:'JPEG Image'},
+  {id:'png',  ext:'png',  name:'PNG Image'}
 ];
 
 export const MIME = {
@@ -21,7 +23,9 @@ export const MIME = {
   md:'text/markdown', 
   html:'text/html', 
   txt:'text/plain', 
-  json:'application/json'
+  json:'application/json',
+  jpg:'image/jpeg',
+  png:'image/png'
 };
 
 export const state = {

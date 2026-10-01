@@ -13,7 +13,7 @@ export function setStatus(kind, html){
 }
 export function renderFormats(){
   const isFull = state.editorMode === 'full';
-  const allowed = isFull ? ['docx', 'pdf', 'pptx', 'md', 'html', 'txt'] : FORMATS.map(f => f.id);
+  const allowed = isFull ? ['docx', 'pdf', 'pptx', 'md', 'html', 'txt', 'jpg', 'png'] : FORMATS.map(f => f.id);
   const visibleFormats = FORMATS.filter(f => allowed.includes(f.id));
   
   if (isFull && !allowed.includes(state.target)) {

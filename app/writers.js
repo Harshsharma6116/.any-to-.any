@@ -381,6 +381,20 @@ async function toPDF(doc){
   return {data: await toPDFText(doc)};
 }
 
+async function toImage(doc, type){
+  if(!window.html2canvas) throw new Error('The image renderer did not load. Reload the page and try again.');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:absolute;left:-99999px;top:0;width:740px;background:#fff;color:#1c2a25;box-sizing:border-box';
+  host.innerHTML = '<style>' + DOC_CSS.replace(/body\{[^}]*\}/, '').replace('max-width:860px;margin:2rem auto;padding:0 1rem','') +
+    ' .pdfroot{font:14px/1.55 system-ui,"Segoe UI","Noto Sans","Noto Sans Tamil","Nirmala UI",Arial,sans-serif;width:740px;padding:32px;} .pdfroot table{font-size:11px} .pdfroot td,.pdfroot th{word-break:break-word}</style><div class="pdfroot">' + bodyHTML(doc) + '</div>';
+  document.body.appendChild(host);
+  try{
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+    const canvas = await html2canvas(host, {scale:2, backgroundColor:'#ffffff', logging:false});
+    return await new Promise(r => canvas.toBlob(r, 'image/' + type, 0.92));
+  } finally { host.remove(); }
+}
+
 export const WRITERS = {
   docx: async d => ({data: await toDOCX(d)}),
   pdf: async d => await toPDF(d),
@@ -391,6 +405,8 @@ export const WRITERS = {
   html: async d => ({data: toHTML(d)}),
   txt: async d => ({data: toTXT(d)}),
   json: async d => ({data: toJSON(d)}),
+  jpg: async d => ({data: await toImage(d, 'jpeg')}),
+  png: async d => ({data: await toImage(d, 'png')}),
 };
 
 /* ---------- saving ---------- */
