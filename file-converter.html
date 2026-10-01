@@ -938,19 +938,60 @@ export async function parseFile(file){
       }]
     };
 
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' + apiKey, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+    // 1. Fetch available models
+    const modelsRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey);
+    if (!modelsRes.ok) throw new Error('Failed to fetch available Gemini models. Check your API key.');
+    const modelsData = await modelsRes.json();
+    
+    // 2. Filter and sort models (prefer 'flash', then newer versions)
+    const availableModels = (modelsData.models || [])
+      .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('gemini'))
+      .sort((a, b) => {
+        const aFlash = a.name.includes('flash') ? 1 : 0;
+        const bFlash = b.name.includes('flash') ? 1 : 0;
+        if (aFlash !== bFlash) return bFlash - aFlash;
+        return b.name.localeCompare(a.name); // higher version numbers first
+      })
+      .map(m => m.name);
 
-    if (!res.ok) {
-      let msg = 'API Error';
-      try { const err = await res.json(); msg = err.error.message; } catch(e){}
-      throw new Error('Gemini API Error: ' + msg);
+    if (!availableModels.length) throw new Error('No compatible Gemini models found for this API key.');
+
+    // 3. Try models with automatic fallback if overloaded
+    let data = null;
+    let lastError = null;
+
+    for (const modelName of availableModels) {
+      try {
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/' + modelName + ':generateContent?key=' + apiKey, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          const errMsg = errData.error?.message || 'Unknown error';
+          if (res.status === 503 || res.status === 429) {
+            lastError = 'Model ' + modelName + ' overloaded. Trying next...';
+            continue; // Try next model
+          }
+          throw new Error(errMsg);
+        }
+        
+        data = await res.json();
+        break; // Success!
+      } catch (err) {
+        lastError = err.message;
+        if (err.message.includes('overloaded') || err.message.includes('High demand') || err.message.includes('fetch')) {
+          continue;
+        }
+        throw err;
+      }
     }
 
-    const data = await res.json();
+    if (!data) {
+      throw new Error('All available Gemini models are currently overloaded or failed. Last error: ' + lastError);
+    }
     let csv = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     csv = csv.replace(/```csv/gi, '').replace(/```/g, '').trim();
     if (!csv) throw new Error('No table data was found in the image.');
