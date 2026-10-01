@@ -386,7 +386,7 @@ export async function parseFile(file){
   else if(ext === 'pptx') blocks = await pptxToBlocks(await file.arrayBuffer());
   else if (['jpg', 'jpeg', 'png'].includes(ext)) {
     const apiKey = localStorage.getItem('gemini_api_key');
-    if (!apiKey) throw new Error('To convert images to tables, please click the ⚙️ Settings button at the bottom and enter a free Google Gemini API key.');
+    if (!apiKey) throw new Error('To convert images to tables, please click the ⚙️ Settings button at the top right and enter a free Google Gemini API key.');
     
     const base64 = await new Promise((resolve) => {
       const reader = new FileReader();
